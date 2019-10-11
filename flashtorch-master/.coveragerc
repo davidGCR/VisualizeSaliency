@@ -1,0 +1,12 @@
+[run]
+branch = true
+disable_warnings =
+    module-not-imported
+    no-data-collected
+
+[report]
+include = */flashtorch/*
+omit = */test/*
+
+[html]
+title = FlashTorch - Test Coverage Report

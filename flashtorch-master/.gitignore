@@ -1,0 +1,14 @@
+venv
+.vscode
+build
+dist
+*.pyc
+.ipynb_checkpoints
+__pycache__
+.cache
+*.egg-info
+htmlcov
+.coverage
+models
+.DS_Store
+development
