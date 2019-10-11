@@ -76,9 +76,12 @@ class Backprop:
             self.relu_outputs = []
             self._register_relu_hooks()
 
-        if torch.cuda.is_available() and use_gpu:
-            self.model = self.model.to('cuda')
-            input_ = input_.to('cuda')
+        # if torch.cuda.is_available() and use_gpu:
+            # self.model = self.model.to('cuda:0')
+            # input_ = input_.to('cuda:0')
+        print('CUDA detected...')
+        self.model = self.model.cuda()
+        input_ = input_.cuda()
 
         self.model.zero_grad()
 
@@ -87,6 +90,7 @@ class Backprop:
         # Get a raw prediction value (logit) from the last linear layer
 
         output = self.model(input_)
+        print('output: ', output.size(),output)
 
         # Don't set the gradient target if the model is a binary classifier
         # i.e. has one class prediction
@@ -100,9 +104,11 @@ class Backprop:
             # set all element to zero
 
             target = torch.FloatTensor(1, output.shape[-1]).zero_()
+            print('target: ', target.size(),target)
 
-            if torch.cuda.is_available() and use_gpu:
-                target = target.to('cuda')
+            # if torch.cuda.is_available() and use_gpu:
+            #     target = target.to('cuda:0')
+            target = target.to('cuda:0')
 
             if (target_class is not None) and (top_class != target_class):
                 warnings.warn(UserWarning(
@@ -112,20 +118,16 @@ class Backprop:
                 ))
 
             # Set the element at top class index to be 1
-
             target[0][top_class] = 1
 
         # Calculate gradients of the target class output w.r.t. input_
-
         output.backward(gradient=target)
 
         # Detach the gradients from the graph and move to cpu
-
         gradients = self.gradients.detach().cpu()[0]
 
         if take_max:
             # Take the maximum across colour channels
-
             gradients = gradients.max(dim=0, keepdim=True)[0]
 
         return gradients
@@ -162,6 +164,7 @@ class Backprop:
         """
 
         # Calculate gradients
+        print('Computing Gradients...')
 
         gradients = self.calculate_gradients(input_,
                                              target_class,
@@ -170,8 +173,39 @@ class Backprop:
                                                  target_class,
                                                  guided=guided,
                                                  take_max=True)
+        print('Gradients computed...')
+        print('input_: ',input_.size())
+        print('gradients: ',gradients.size())
+        print('max_gradients: ', max_gradients.size())
+        ############## rgb #########################
+        # input_:  torch.Size([1, 3, 224, 224])
+        # gradients:  torch.Size([3, 224, 224])
+        # max_gradients:  torch.Size([1, 224, 224])
+        ############## di ##########################
+        # input_:  torch.Size([1, 1, 3, 224, 224])
+        # gradients:  torch.Size([1, 3, 224, 224])
+        # max_gradients:  torch.Size([1, 3, 224, 224])
+        
+        input_ = input_.squeeze(dim=0)
+        gradients = gradients.squeeze(dim=0)
+        max_gradients = max_gradients.squeeze(dim=0)
 
         # Setup subplots
+        input_ = input_.cpu()
+        # gradients = gradients.cpu()
+        # max_gradients = max_gradients.cpu()
+        input_size = 224
+        ones = torch.ones(1, input_size, input_size)
+        zeros = torch.zeros(1, input_size, input_size)
+        # ones = ones.cuda()
+        # zeros = zeros.cuda() 
+        
+        gradients = torch.where(gradients > gradients.view(gradients.size(0), gradients.size(1), -1).mean(2)[:,:, None], ones, zeros)
+        max_gradients = torch.where(max_gradients > max_gradients.view(max_gradients.size(0), max_gradients.size(1), -1).mean(2)[:, :, None], ones, zeros)
+        
+        
+
+       
 
         subplots = [
             # (title, [(image1, cmap, alpha), (image2, cmap, alpha)])
