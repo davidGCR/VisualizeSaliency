@@ -45,9 +45,11 @@ from ViolenceDatasetV2 import *
 from dinamycImage import *
 from util import *
 from transforms import *
+from initializeModel import *
 import torch
 from flashtorch.utils import apply_transforms, load_image
 from flashtorch.saliency import Backprop
+import os
 
 def di_saliency():
 
@@ -66,7 +68,12 @@ def di_saliency():
     batch_size = 1
     num_workers = 1
 
-    model = torch.load('models/alexnet-frames-Finetuned:False-1di-tempMaxPool-OnPlateau.tar')
+    # model = torch.load('models/alexnet-frames-Finetuned:True-1di-tempMaxPool-OnPlateau.tar')
+    path = os.path.join('models','alexnet-frames-Finetuned:True-1di-tempMaxPool-OnPlateau.tar')
+    # model, input_size = initialize_model( model_name='alexnet', num_classes=2, feature_extract=False, numDiPerVideos=1, joinType='OnPlateau', use_pretrained=True)
+    # model = load_checkpoint(model,'models/alexnet-frames-Finetuned:True-1di-tempMaxPool-OnPlateau.tar')
+    # model.load_state_dict(torch.load(path))
+    model = torch.load(path)
     model.cuda()
     backprop = Backprop(model)
 
@@ -81,14 +88,19 @@ def di_saliency():
         "test": torch.utils.data.DataLoader( image_datasets["test"], batch_size=batch_size, shuffle=False, num_workers=num_workers, ),
     }
     count = 0
+    max_plots = 5
     for inputs, labels in dataloaders_dict["test"]:
         count += 1
-        inputs = inputs.permute(1, 0, 2, 3, 4)
+        if count > max_plots:
+            break
+        print('*' * 12)
+        print('inputs size: ',inputs.size())
+        # inputs = inputs.permute(1, 0, 2, 3, 4)
         inputs = inputs.cuda()
         # labels = labels.to(self.device)
-        backprop.visualize(inputs, target_class=1, guided=False, use_gpu=True)
-        if count > 5:
-            break
+        backprop.visualize(inputs, target_class=None, guided=False, use_gpu=True, di=True)
+
+
 def saliency():
 
     """### 1. Load an image"""
@@ -149,6 +161,7 @@ def saliency():
     # backprop.visualize(toucan, 96, guided=True, use_gpu=True)
 
     # """Please try out other models/images too!"""
+
 def __main__():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str)
